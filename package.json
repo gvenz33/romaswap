@@ -1,0 +1,25 @@
+{
+  "name": "romaswap",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Noncustodial Base swap aggregator. Live trading stays off until the launch gates are signed.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "lint": "npm run lint --workspace apps/web",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/swap/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "@walletconnect/logger": {
+      "pino": "10.1.0"
+    }
+  }
+}
