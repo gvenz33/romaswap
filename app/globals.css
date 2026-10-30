@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #5b21b6;
+  --color-gold: #ffe14a;
+  --color-gold-2: #fff4b8;
+  --color-muted: #f3d4ff;
+  --color-panel: #6d28d9;
+  --color-down: #ff5d8f;
+  --color-up: #5dffb0;
+}
+
+html,
+body {
+  background:
+    radial-gradient(900px 480px at 0% -10%, #ffe14a 0%, transparent 46%),
+    radial-gradient(820px 520px at 100% 0%, #ff4d8d 0%, transparent 42%),
+    radial-gradient(900px 640px at 80% 120%, #22d3ee 0%, transparent 46%),
+    #7c3aed;
+  color: white;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #ffe14a;
+  outline-offset: 2px;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+::selection {
+  background: rgba(255, 225, 74, 0.45);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #ffe14a transparent;
+}
+
+.menu-link {
+  display: block;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.menu-link:hover {
+  background: rgba(255, 225, 74, 0.18);
+}
