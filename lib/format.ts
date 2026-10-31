@@ -11,11 +11,13 @@ export function formatUsd(value: number): string {
 }
 
 export function formatPrice(value: number): string {
+  if (!(value > 0)) return "—";
+  const digits = value >= 1 ? 2 : value >= 0.01 ? 4 : 6;
   return value.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: digits,
   });
 }
 

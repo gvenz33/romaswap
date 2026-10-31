@@ -5,7 +5,6 @@ import { Mascot } from "@/components/mascot";
 import { TokenIcon } from "@/components/token-icon";
 import { formatCompactUsd, formatToken, formatUsd } from "@/lib/format";
 import { SAMPLE_POOLS } from "@/lib/pools";
-import { TOKENS } from "@/lib/tokens";
 
 const AGGREGATOR_NOTE =
   "RomaSwap routes swaps through existing Base markets. It does not accept liquidity deposits, custody pool tokens, or deploy its own pools.";
@@ -55,8 +54,8 @@ export function PoolScreen() {
           <h2 className="text-2xl font-medium">{app.wallet ? "No liquidity positions" : "Connect a wallet"}</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-[#f3d4ff]">
             {app.wallet
-              ? "This demo wallet has no pool tokens. RomaSwap does not hold liquidity for you."
-              : "A demo session can show sample balances. Live positions are not part of this version."}
+              ? "This wallet has no pool tokens shown here. RomaSwap does not hold liquidity for you."
+              : "Connect a wallet you control. Live positions are not part of this version."}
           </p>
           {app.wallet ? null : (
             <button className="mt-4 rounded-full bg-[#ffe14a] px-4 py-2 text-sm font-semibold text-[#3b1608]" onClick={() => app.openModal("connect")}>
@@ -97,19 +96,22 @@ export function PoolScreen() {
 
 export function PortfolioScreen() {
   const app = useApp();
-  const rows = TOKENS.map((token) => {
+  const rows = app.tokens.map((token) => {
     const balance = app.balances[token.id] ?? 0;
     return { token, balance, value: balance * token.priceUsd };
   });
   const total = rows.reduce((sum, row) => sum + row.value, 0);
 
-  if (!app.wallet) {
+  const wallet = app.wallet;
+  const balancesReady = Boolean(wallet?.chainOk) && !app.balancesLoading && !app.balancesError;
+
+  if (!wallet) {
     return (
       <div className="grid min-h-[60vh] place-items-center px-4">
         <div className="max-w-md text-center">
           <Mascot pose="wave" alt="" className="mx-auto h-40 w-40 object-contain" />
           <h1 className="text-3xl font-medium">Portfolio</h1>
-          <p className="mt-3 text-[#f3d4ff]">Connect a demo wallet to see sample Base balances for the draft allowlist.</p>
+          <p className="mt-3 text-[#f3d4ff]">Connect a wallet you control to read Base balances for the draft allowlist.</p>
           <button className="mt-5 rounded-full bg-[#ffe14a] px-5 py-2.5 font-semibold text-[#1a1408]" onClick={() => app.openModal("connect")}>
             Connect wallet
           </button>
@@ -120,9 +122,18 @@ export function PortfolioScreen() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-10 pb-16">
-      <p className="text-sm text-[#f3d4ff]">{app.wallet.name} · demo session</p>
-      <h1 className="mt-2 text-4xl font-medium tabular">{formatUsd(total)}</h1>
-      <p className="mt-1 text-sm text-[#f3d4ff]">Sample value on Base. Balances change only inside this demo.</p>
+      <p className="text-sm text-[#f3d4ff]">{wallet.name} · {wallet.chainOk ? "Base" : "wrong network"}</p>
+      <h1 className="mt-2 text-4xl font-medium tabular">{balancesReady ? formatUsd(total) : "—"}</h1>
+      <p className="mt-1 text-sm text-[#f3d4ff]">
+        {wallet.chainOk
+          ? "Balances are read from Base. Prices are samples. A receipt on this page does not move these balances."
+          : "Switch this wallet to Base (chain ID 8453) to read balances."}
+      </p>
+      {wallet.chainOk ? null : (
+        <button className="mt-4 rounded-full bg-[#ffe14a] px-4 py-2 text-sm font-semibold text-[#3b1608]" onClick={() => void app.switchToBase()}>
+          Switch to Base
+        </button>
+      )}
       <div className="mt-8 overflow-hidden rounded-3xl border border-white/10">
         {rows.map((row) => (
           <div key={row.token.id} className="flex items-center gap-3 border-b border-white/5 px-4 py-4 last:border-b-0">
@@ -132,8 +143,8 @@ export function PortfolioScreen() {
               <div className="text-sm text-[#f3d4ff]">{row.token.name}</div>
             </div>
             <div className="text-right">
-              <div className="tabular">{formatToken(row.balance)}</div>
-              <div className="text-sm text-[#f3d4ff] tabular">{formatUsd(row.value)}</div>
+              <div className="tabular">{balancesReady ? formatToken(row.balance) : "—"}</div>
+              <div className="text-sm text-[#f3d4ff] tabular">{balancesReady ? formatUsd(row.value) : "—"}</div>
             </div>
           </div>
         ))}
@@ -142,7 +153,7 @@ export function PortfolioScreen() {
       {app.activity.length === 0 ? (
         <div className="flex items-center gap-3">
           <Mascot pose="shock" alt="" className="h-16 w-16 object-contain" />
-          <p className="text-sm text-[#fff4b8]">No demo swaps yet. The centurion is waiting.</p>
+          <p className="text-sm text-[#fff4b8]">No receipts yet. The centurion is waiting.</p>
         </div>
       ) : (
         <ul className="grid gap-2">

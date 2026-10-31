@@ -12,7 +12,7 @@ export function LimitScreen() {
         <Mascot pose="shock" alt="The centurion looking shocked" className="mx-auto h-36 w-36 object-contain" />
         <h1 className="text-xl font-medium">Limit</h1>
         <p className="mt-2 text-sm leading-6 text-[#f3d4ff]">
-          Limit orders are not available. RomaSwap’s demo covers immediate swaps on Base only.
+          Limit orders are not available. RomaSwap covers immediate swaps on Base only.
         </p>
         <Link href="/swap" className="mt-4 inline-flex rounded-full bg-[#ffe14a] px-4 py-2 text-sm font-semibold text-[#1a1408]">
           Go to Swap

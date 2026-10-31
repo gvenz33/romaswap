@@ -8,7 +8,7 @@ export default function TermsPage() {
     <article className="mx-auto max-w-2xl px-4 py-12 text-sm leading-7 text-[#d7d7d7]">
       <h1 className="text-3xl font-medium text-white">Terms of Service</h1>
       <p className="mt-4">
-        RomaSwap is an independent Base interface for reviewing token swaps. This deployment is a demo. It shows sample prices and records nothing onchain. It does not broadcast transactions, hold customer assets, or request a seed phrase.
+        RomaSwap is an independent Base interface for reviewing token swaps. You connect a wallet you control. Prices on this deployment are samples, and a swap is not broadcast. RomaSwap does not hold customer assets or request a seed phrase.
       </p>
       <p className="mt-3">
         RomaSwap is an independent product. It is not affiliated with Uniswap Labs. The layout follows a familiar swap-interface pattern and uses RomaSwap’s own name, copy, and mark.

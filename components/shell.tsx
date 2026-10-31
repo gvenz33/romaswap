@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useApp, type WalletKind } from "@/components/app-state";
+import { useApp } from "@/components/app-state";
 import { Mascot } from "@/components/mascot";
 import { TokenIcon } from "@/components/token-icon";
 import { formatToken, shortAddress } from "@/lib/format";
-import { TOKENS } from "@/lib/tokens";
+import { isAddress } from "viem";
 
 const TRADE = [
   { href: "/swap", label: "Swap" },
@@ -21,13 +21,6 @@ const EXPLORE = [
   { href: "/explore/pools", label: "Pools" },
   { href: "/explore/transactions", label: "Transactions" },
   { href: "/explore/auctions", label: "Auctions" },
-];
-
-const WALLETS: { kind: WalletKind; name: string; detail: string }[] = [
-  { kind: "metamask", name: "MetaMask", detail: "Browser extension" },
-  { kind: "coinbase", name: "Coinbase Wallet", detail: "Extension and mobile" },
-  { kind: "walletconnect", name: "WalletConnect", detail: "Mobile wallets" },
-  { kind: "trust", name: "Trust Wallet", detail: "Mobile wallet" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -124,12 +117,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <MenuCard className="right-0 w-64">
                   <Link className="menu-link" href="/terms">Terms of Service</Link>
                   <Link className="menu-link" href="/privacy">Privacy Policy</Link>
-                  <p className="px-3 py-2 text-xs leading-5 text-[#f3d4ff]">Demo mode. Sample prices only. Nothing is signed or sent.</p>
+                  <p className="px-3 py-2 text-xs leading-5 text-[#f3d4ff]">Live USD prices. Your wallet stays yours. RomaSwap does not send a swap yet.</p>
                 </MenuCard>
               ) : null}
             </div>
             {app.wallet ? (
-              <button className="rounded-full border border-[#ffe14a]/50 px-3 py-2 text-sm font-medium text-[#ffe3a3]" aria-label="Disconnect demo wallet" onClick={app.disconnect}>
+              <button className="rounded-full border border-[#ffe14a]/50 px-3 py-2 text-sm font-medium text-[#ffe3a3]" aria-label={`Disconnect ${app.wallet.name}`} onClick={() => void app.disconnect()}>
                 {shortAddress(app.wallet.address)}
               </button>
             ) : (
@@ -153,9 +146,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <div className="flex items-center justify-center gap-2 border-b border-[#ffe14a] bg-gradient-to-r from-[#ffe14a] via-[#ff8a3d] to-[#ff4d8d] px-3 py-1 text-center text-xs font-semibold text-[#3b1608] sm:gap-3 sm:text-sm">
         <Mascot pose="wave" alt="" className="h-11 w-11 object-contain" />
-        <span>Ave! Demo legion only · sample prices · Base · no signature and no live trade</span>
+        <span>Ave! Your wallet · Base only · live prices · no live trade</span>
         <Mascot pose="thumbs" alt="" className="hidden h-11 w-11 object-contain sm:block" />
       </div>
+
+      {app.wallet && !app.wallet.chainOk ? (
+        <div className="flex flex-wrap items-center justify-center gap-3 bg-[#3b1608] px-3 py-2 text-center text-sm text-[#ffe14a]">
+          <span>This wallet is not on Base. RomaSwap only uses chain ID 8453.</span>
+          <button
+            className="rounded-full bg-[#ffe14a] px-3 py-1 text-xs font-semibold text-[#3b1608] disabled:opacity-60"
+            disabled={app.switchingChain}
+            onClick={() => void app.switchToBase()}
+          >
+            {app.switchingChain ? "Switching" : "Switch to Base"}
+          </button>
+        </div>
+      ) : null}
 
       <div onClick={() => setMenu(null)}>{children}</div>
 
@@ -217,23 +223,42 @@ function ConnectModal() {
       <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#6d28d9] p-5">
         <ModalTitle title="Connect a wallet" onClose={app.closeModal} />
         <p className="mb-4 text-sm leading-6 text-[#f3d4ff]">
-          This starts a demo session on Base. RomaSwap will not request a signature, a seed phrase, or a transaction.
+          Connect a wallet you control. RomaSwap never asks for a seed phrase or private key. The wallet may ask you to approve the connection. A swap is not sent from this screen.
         </p>
         <div className="grid gap-2">
-          {WALLETS.map((wallet) => (
+          {app.walletChoices.map((wallet) => (
             <button
-              key={wallet.kind}
-              className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left hover:bg-white/10"
-              onClick={() => app.connect(wallet.kind)}
+              key={wallet.id}
+              className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-4 py-3 text-left hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!wallet.ready || app.connectingId !== null}
+              onClick={() => void app.connect(wallet.id)}
             >
-              <span>
-                <span className="block font-medium">{wallet.name}</span>
-                <span className="text-sm text-[#f3d4ff]">{wallet.detail}</span>
+              <span className="flex min-w-0 items-center gap-3">
+                {wallet.icon ? (
+                  // Wallet icons are data URLs or https images supplied by the connector.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={wallet.icon} alt="" className="h-8 w-8 rounded-lg bg-white/10 object-contain" />
+                ) : (
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ffe14a] text-sm font-semibold text-[#3b1608]">
+                    {wallet.name.slice(0, 1)}
+                  </span>
+                )}
+                <span className="min-w-0">
+                  <span className="block font-medium">{wallet.name}</span>
+                  <span className="block text-sm text-[#f3d4ff]">{wallet.detail}</span>
+                </span>
               </span>
-              <span className="text-xs font-semibold text-[#ffe14a]">Demo</span>
+              <span className="shrink-0 text-xs font-semibold text-[#ffe14a]">
+                {!wallet.ready ? "Setup" : app.connectingId === wallet.id ? "Waiting" : "Connect"}
+              </span>
             </button>
           ))}
         </div>
+        {app.connectError ? (
+          <p className="mt-3 text-sm leading-6 text-[#ffe14a]" role="alert">
+            {app.connectError}
+          </p>
+        ) : null}
         <p className="mt-4 text-center text-xs text-[#f3d4ff]">
           <Link className="underline" href="/terms">Terms of Service</Link>
           <span> · </span>
@@ -256,7 +281,7 @@ function SearchModal() {
     { href: "/portfolio", label: "Portfolio", hint: "Balances" },
     { href: "/terms", label: "Terms of Service", hint: "Legal" },
   ].filter((page) => page.label.toLowerCase().includes(needle));
-  const tokens = TOKENS.filter((token) => `${token.symbol} ${token.name}`.toLowerCase().includes(needle));
+  const tokens = app.tokens.filter((token) => `${token.symbol} ${token.name}`.toLowerCase().includes(needle));
 
   return (
     <Overlay onClose={app.closeModal}>
@@ -299,11 +324,40 @@ function SearchModal() {
   );
 }
 
+function balanceLabel(app: ReturnType<typeof useApp>, tokenId: string) {
+  if (!app.wallet?.chainOk) return "";
+  if (app.balancesLoading) return "…";
+  if (app.balancesError) return "—";
+  return formatToken(app.balances[tokenId] ?? 0);
+}
+
 function TokenModal({ side }: { side: "sell" | "buy" }) {
   const app = useApp();
   const [query, setQuery] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const needle = query.trim().toLowerCase();
-  const tokens = TOKENS.filter((token) => `${token.symbol} ${token.name} ${token.address ?? ""}`.toLowerCase().includes(needle));
+  const tokens = app.tokens.filter((token) => `${token.symbol} ${token.name} ${token.address ?? ""}`.toLowerCase().includes(needle));
+  const pasted = query.trim();
+  const canImport = isAddress(pasted) && !app.tokens.some((token) => token.address?.toLowerCase() === pasted.toLowerCase());
+
+  function choose(id: string) {
+    if (side === "sell") app.setSellToken(id);
+    else app.setBuyToken(id);
+    app.closeModal();
+  }
+
+  async function importPasted() {
+    setImporting(true);
+    setImportError(null);
+    const result = await app.importToken(pasted);
+    setImporting(false);
+    if ("error" in result) {
+      setImportError(result.error);
+      return;
+    }
+    choose(result.id);
+  }
 
   return (
     <Overlay onClose={app.closeModal}>
@@ -312,33 +366,51 @@ function TokenModal({ side }: { side: "sell" | "buy" }) {
         <input
           autoFocus
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setImportError(null);
+          }}
           placeholder="Search name or paste address"
           className="mb-3 w-full rounded-2xl bg-white/5 px-4 py-3 outline-none"
           aria-label="Search tokens"
         />
-        <p className="mb-2 text-xs text-[#f3d4ff]">Draft Base allowlist. Arbitrary contracts are blocked in this demo.</p>
+        <p className="mb-2 text-xs text-[#f3d4ff]">Reviewed Base tokens are listed. Paste a contract address to import another. An import is not a review, and a swap is not sent.</p>
         <div className="scroll-thin overflow-auto">
-          {tokens.length === 0 ? <p className="px-2 py-6 text-sm text-[#f3d4ff]">No allowlisted token matches that search.</p> : null}
-          {tokens.map((token) => (
+          {canImport ? (
             <button
-              key={token.id}
-              className="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white/5"
-              onClick={() => {
-                if (side === "sell") app.setSellToken(token.id);
-                else app.setBuyToken(token.id);
-                app.closeModal();
-              }}
+              className="mb-2 w-full rounded-2xl bg-white/5 px-3 py-3 text-left hover:bg-white/10 disabled:opacity-60"
+              disabled={importing}
+              onClick={() => void importPasted()}
             >
-              <TokenIcon token={token} size={32} />
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{token.symbol}</span>
-                <span className="block truncate text-sm text-[#f3d4ff]">{token.name}</span>
-              </span>
-              <span className="text-right text-sm tabular">
-                {app.wallet ? formatToken(app.balances[token.id] ?? 0) : ""}
-              </span>
+              <span className="block font-medium">{importing ? "Reading contract on Base" : "Import token"}</span>
+              <span className="block truncate text-sm text-[#f3d4ff]">{pasted}</span>
             </button>
+          ) : null}
+          {importError ? <p className="mb-2 text-sm text-[#ffe14a]" role="alert">{importError}</p> : null}
+          {tokens.length === 0 && !canImport ? <p className="px-2 py-6 text-sm text-[#f3d4ff]">No token matches that search.</p> : null}
+          {tokens.map((token) => (
+            <div key={token.id} className="flex items-center gap-2">
+              <button
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white/5"
+                onClick={() => choose(token.id)}
+              >
+                <TokenIcon token={token} size={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{token.symbol}</span>
+                  <span className="block truncate text-sm text-[#f3d4ff]">
+                    {token.imported && token.address ? `${token.name} · ${shortAddress(token.address)}` : token.name}
+                  </span>
+                </span>
+                <span className="text-right text-sm tabular">
+                  {balanceLabel(app, token.id)}
+                </span>
+              </button>
+              {token.imported ? (
+                <button className="shrink-0 px-2 text-xs text-[#ffe14a]" onClick={() => app.removeImportedToken(token.id)}>
+                  Remove
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       </div>
@@ -357,7 +429,12 @@ function ReviewModal() {
     <Overlay onClose={app.closeModal}>
       <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#6d28d9] p-5">
         <ModalTitle title="Review swap" onClose={app.closeModal} />
-        <p className="mb-4 text-sm text-[#f3d4ff]">Sample quote. Confirming records it in this demo session only.</p>
+        <p className="mb-4 text-sm text-[#f3d4ff]">
+          {app.pricesLive ? "Live USD prices." : "Waiting for the live price feed."} Confirming keeps a receipt in this browser. Nothing is sent.
+        </p>
+        {app.sellToken.imported || app.buyToken?.imported ? (
+          <p className="mb-3 text-sm leading-6 text-[#ffe3a3]">One of these contracts was imported by address. It is not on the reviewed list.</p>
+        ) : null}
         <div className="grid gap-2 rounded-2xl bg-white/5 p-4">
           <Row label="You pay" value={`${formatToken(quote.sellAmount)} ${app.sellToken.symbol}`} />
           <Row label="You receive" value={`${formatToken(quote.buyAmount)} ${buy.symbol}`} />
@@ -375,7 +452,7 @@ function ReviewModal() {
           className="mt-4 h-12 w-full rounded-2xl bg-[#ffe14a] font-semibold text-[#1a1408] hover:bg-[#fff3a1]"
           onClick={() => app.confirmDemoSwap()}
         >
-          Confirm demo swap
+          Confirm sample quote
         </button>
       </div>
     </Overlay>
@@ -388,8 +465,8 @@ function ReceiptModal() {
   return (
     <Overlay onClose={app.closeModal}>
       <div className="mx-auto w-full max-w-md rounded-3xl border border-[#ffe14a]/50 bg-[#6d28d9] p-5 text-center">
-        <Mascot pose="cheer" alt="The centurion celebrating a demo swap" className="mx-auto h-40 w-40 object-contain" />
-        <p className="text-sm font-semibold text-[#ffe14a]">Demo receipt</p>
+        <Mascot pose="cheer" alt="The centurion celebrating a sample quote" className="mx-auto h-40 w-40 object-contain" />
+        <p className="text-sm font-semibold text-[#ffe14a]">Sample receipt</p>
         <h2 className="mt-2 text-2xl font-semibold">Swap recorded</h2>
         <p className="mt-2 text-sm leading-6 text-[#f3d4ff]">No transaction was broadcast and no wallet signature was requested.</p>
         {latest ? (

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp, type Timeframe } from "@/components/app-state";
 import { Mascot } from "@/components/mascot";
-import { series, TokenIcon } from "@/components/token-icon";
+import { TokenIcon } from "@/components/token-icon";
 import { formatToken, formatUsd, sanitizeAmount } from "@/lib/format";
 
 const TABS = [
@@ -42,15 +42,32 @@ export function SwapScreen() {
   const buy = app.buyToken;
   const amount = app.sellAmountNumber;
   const balance = app.balances[app.sellToken.id] ?? 0;
-  const overBalance = Boolean(app.wallet) && amount > balance + 1e-12;
+  const balanceReady = Boolean(app.wallet?.chainOk) && !app.balancesLoading && !app.balancesError;
+  const overBalance = balanceReady && amount > balance + 1e-8;
   const quote = app.quote;
 
   let action = "Connect wallet";
   let disabled = false;
   let onAction = () => app.openModal("connect");
-  if (app.wallet && !buy) {
+  if (app.wallet && !app.wallet.chainOk) {
+    action = app.switchingChain ? "Switching to Base" : "Switch to Base";
+    disabled = app.switchingChain;
+    onAction = () => void app.switchToBase();
+  } else if (app.wallet && app.balancesLoading) {
+    action = "Reading Base balance";
+    disabled = true;
+    onAction = () => undefined;
+  } else if (app.wallet && app.balancesError) {
+    action = "Could not read Base balance";
+    disabled = true;
+    onAction = () => undefined;
+  } else if (app.wallet && !buy) {
     action = "Select a token";
     onAction = () => app.openModal("token-buy");
+  } else if (app.wallet && amount > 0 && buy && (app.sellToken.priceUsd <= 0 || buy.priceUsd <= 0)) {
+    action = "Waiting for a live price";
+    disabled = true;
+    onAction = () => undefined;
   } else if (app.wallet && (!(amount > 0) || !quote)) {
     action = "Enter an amount";
     disabled = true;
@@ -145,7 +162,7 @@ export function SwapScreen() {
                   className="mt-2 w-full rounded-xl bg-white/5 px-3 py-2 outline-none"
                   onChange={(event) => app.setDeadlineMin(Number(event.target.value.replace(/\D/g, "")) || 1)}
                 />
-                <span className="mt-1 block text-xs font-normal text-[#f3d4ff]">Minutes before a live quote would expire. Stored locally in this demo.</span>
+                <span className="mt-1 block text-xs font-normal text-[#f3d4ff]">Minutes before a live quote would expire. Stored in this browser.</span>
               </label>
             </div>
           ) : null}
@@ -157,13 +174,13 @@ export function SwapScreen() {
           label="Sell"
           token={app.sellToken}
           amount={app.sellAmount}
-          usd={amount > 0 ? amount * app.sellToken.priceUsd : 0}
+          usd={moneyLabel(amount, app.sellToken.priceUsd)}
           over={overBalance}
           onAmount={(value) => app.setSellAmount(sanitizeAmount(value, app.sellToken.decimals))}
           onPick={() => app.openModal("token-sell")}
-          balance={app.wallet ? balance : null}
+          balance={balanceReady ? balance : null}
           onMax={
-            app.wallet
+            balanceReady
               ? () => app.setSellAmount(trimAmount(balance, Math.min(app.sellToken.decimals, 8)))
               : undefined
           }
@@ -180,7 +197,7 @@ export function SwapScreen() {
           label="Buy"
           token={buy}
           amount={quote ? trimAmount(quote.buyAmount, 6) : ""}
-          usd={quote?.buyValueUsd ?? 0}
+          usd={quote ? formatUsd(quote.buyValueUsd) : "—"}
           readOnly
           onPick={() => app.openModal("token-buy")}
           placeholder={buy ? "0" : "0"}
@@ -240,7 +257,7 @@ function TokenField({
   label: string;
   token: { id: string; symbol: string; accent: string } | null;
   amount: string;
-  usd: number;
+  usd: string;
   onAmount?: (value: string) => void;
   onPick: () => void;
   balance?: number | null;
@@ -286,7 +303,7 @@ function TokenField({
           <Caret />
         </button>
       </div>
-      <div className="mt-2 text-sm text-[#f3d4ff] tabular">{formatUsd(usd)}</div>
+      <div className="mt-2 text-sm text-[#f3d4ff] tabular">{usd}</div>
     </div>
   );
 }
@@ -300,31 +317,57 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
+function moneyLabel(amount: number, price: number): string {
+  if (!(amount > 0)) return formatUsd(0);
+  if (!(price > 0)) return "—";
+  return formatUsd(amount * price);
+}
+
 function PriceChart() {
   const app = useApp();
   const buy = app.buyToken;
+  const [livePoints, setLivePoints] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ frame: app.timeframe });
+    if (app.sellToken.address) params.set("address", app.sellToken.address);
+    else params.set("token", app.sellToken.id);
+    let cancel = false;
+    setLivePoints(null);
+    fetch(`/api/chart?${params}`)
+      .then((response) => response.json())
+      .then((body: { points?: number[] }) => {
+        if (!cancel) setLivePoints(Array.isArray(body.points) ? body.points : []);
+      })
+      .catch(() => {
+        if (!cancel) setLivePoints([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [app.sellToken.address, app.sellToken.id, app.timeframe]);
   if (!buy) return null;
-  const points = series(`${app.sellToken.id}-${buy.id}-${app.timeframe}`, 48);
   const width = 440;
   const height = 160;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  const chartPoints = livePoints && livePoints.length > 1 ? livePoints : [];
+  const min = chartPoints.length ? Math.min(...chartPoints) : 0;
+  const max = chartPoints.length ? Math.max(...chartPoints) : 1;
   const span = max - min || 1;
-  const coords = points.map((point, index) => {
-    const x = (index / (points.length - 1)) * width;
+  const coords = chartPoints.map((point, index) => {
+    const x = (index / (chartPoints.length - 1)) * width;
     const y = height - ((point - min) / span) * (height - 16) - 8;
     return [x, y] as const;
   });
   const line = coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const area = `${line} L${width},${height} L0,${height} Z`;
+  const area = line ? `${line} L${width},${height} L0,${height} Z` : "";
 
   return (
     <section className="mb-4 rounded-[22px] border border-[#ffe14a]/45 bg-[#6d28d9] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-[#f3d4ff]">{app.sellToken.symbol} / {buy.symbol}</p>
-          <p className="text-2xl font-medium tabular">{formatUsd(app.sellToken.priceUsd)}</p>
-          <p className="text-xs text-[#f3d4ff]">Sample {app.timeframe} path · not a live market</p>
+          <p className="text-2xl font-medium tabular">{app.sellToken.priceUsd > 0 ? formatUsd(app.sellToken.priceUsd) : "—"}</p>
+          <p className="text-xs text-[#f3d4ff]">{app.pricesLive ? `Live USD price · ${app.timeframe}` : "Waiting for the live price feed"}</p>
         </div>
         <div className="flex gap-1">
           {FRAMES.map((frame) => (
@@ -338,10 +381,14 @@ function PriceChart() {
           ))}
         </div>
       </div>
-      <svg className="mt-3 w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Sample price chart">
-        <path d={area} fill="rgba(255,225,74,0.28)" />
-        <path d={line} fill="none" stroke="#ffe14a" strokeWidth="2.5" />
-      </svg>
+      {line ? (
+        <svg className="mt-3 w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Live price chart">
+          <path d={area} fill="rgba(255,225,74,0.28)" />
+          <path d={line} fill="none" stroke="#ffe14a" strokeWidth="2.5" />
+        </svg>
+      ) : (
+        <p className="mt-6 text-sm text-[#f3d4ff]">{livePoints === null ? "Loading the live chart." : "No live chart for this window."}</p>
+      )}
     </section>
   );
 }

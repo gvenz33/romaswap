@@ -27,8 +27,8 @@ describe("RomaSwap sample quote", () => {
     });
     assert.ok(quote);
     assert.equal(quote.feeToken.id, "usdc");
-    assert.equal(quote.feeAmount, 3450 * 0.0025);
-    assert.equal(quote.buyAmount, 3450 * 0.9975);
+    assert.equal(quote.feeAmount, eth.priceUsd * 0.0025);
+    assert.equal(quote.buyAmount, eth.priceUsd * 0.9975);
     assert.ok(Math.abs(quote.minReceived - quote.buyAmount * 0.995) < 1e-9);
   });
 
@@ -60,7 +60,7 @@ describe("RomaSwap sample quote", () => {
   it("only exposes the draft allowlist", () => {
     assert.deepEqual(
       TOKENS.map((token) => token.symbol),
-      ["ETH", "WETH", "USDC", "cbBTC"],
+      ["ETH", "WETH", "USDC", "cbBTC", "USDT", "EURC", "cbETH", "wstETH", "AERO", "cbXRP", "cbDOGE", "cbADA", "cbLTC", "cbMEGA", "cbHYPE", "cbZEC"],
     );
     assert.equal(usdc.address, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
   });

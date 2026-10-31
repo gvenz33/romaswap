@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useApp } from "@/components/app-state";
 import { Mascot } from "@/components/mascot";
-import { Sparkline, TokenIcon } from "@/components/token-icon";
+import { TokenIcon } from "@/components/token-icon";
 import { formatCompactUsd, formatPct, formatPrice } from "@/lib/format";
 import { SAMPLE_POOLS, SAMPLE_TXS } from "@/lib/pools";
-import { TOKENS } from "@/lib/tokens";
+import type { Token } from "@/lib/tokens";
 
 const TABS = [
   { href: "/explore", label: "Tokens" },
@@ -16,11 +17,12 @@ const TABS = [
 ];
 
 export function ExploreScreen({ tab }: { tab: "tokens" | "pools" | "transactions" | "auctions" }) {
+  const app = useApp();
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const tokens = useMemo(
-    () => TOKENS.filter((token) => `${token.symbol} ${token.name}`.toLowerCase().includes(needle)),
-    [needle],
+    () => app.tokens.filter((token) => `${token.symbol} ${token.name}`.toLowerCase().includes(needle)),
+    [app.tokens, needle],
   );
 
   return (
@@ -51,21 +53,21 @@ export function ExploreScreen({ tab }: { tab: "tokens" | "pools" | "transactions
           />
         </div>
       </div>
-      <p className="mb-4 text-sm text-[#f3d4ff]">Sample figures for the draft Base allowlist. These are not live market data.</p>
-      {tab === "tokens" ? <TokenTable tokens={tokens} /> : null}
+      <p className="mb-4 text-sm text-[#f3d4ff]">USD prices and the 1D change come from the live price feed. FDV and volume are not shown.</p>
+      {tab === "tokens" ? <TokenTable tokens={tokens} pricesLive={app.pricesLive} /> : null}
       {tab === "pools" ? <PoolTable query={needle} /> : null}
       {tab === "transactions" ? <TxTable /> : null}
       {tab === "auctions" ? (
         <EmptyPanel
           title="Auctions are not offered"
-          body="RomaSwap does not run token auctions or a launch sale. Trading in this demo stays on the draft Base allowlist."
+          body="RomaSwap does not run token auctions or a launch sale. Swaps stay on the draft Base allowlist."
         />
       ) : null}
     </div>
   );
 }
 
-function TokenTable({ tokens }: { tokens: typeof TOKENS }) {
+function TokenTable({ tokens, pricesLive }: { tokens: Token[]; pricesLive: boolean }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
@@ -89,12 +91,12 @@ function TokenTable({ tokens }: { tokens: typeof TOKENS }) {
                   </span>
                 </Link>
               </td>
-              <td className="px-3 py-4 tabular">{formatPrice(token.priceUsd)}</td>
-              <td className={`px-3 py-4 tabular ${token.change1h >= 0 ? "text-[#b6ff6a]" : "text-[#ffb3d0]"}`}>{formatPct(token.change1h)}</td>
-              <td className={`px-3 py-4 tabular ${token.change1d >= 0 ? "text-[#b6ff6a]" : "text-[#ffb3d0]"}`}>{formatPct(token.change1d)}</td>
-              <td className="px-3 py-4 tabular">{formatCompactUsd(token.fdvUsd)}</td>
-              <td className="px-3 py-4 tabular">{formatCompactUsd(token.volume1dUsd)}</td>
-              <td className="px-3 py-4"><Sparkline seed={token.id} up={token.change1d >= 0} /></td>
+              <td className="px-3 py-4 tabular">{token.priceUsd > 0 ? formatPrice(token.priceUsd) : "—"}</td>
+              <td className="px-3 py-4 tabular text-[#f3d4ff]">—</td>
+              <td className={`px-3 py-4 tabular ${token.change1d >= 0 ? "text-[#b6ff6a]" : "text-[#ffb3d0]"}`}>{pricesLive ? formatPct(token.change1d) : "—"}</td>
+              <td className="px-3 py-4 tabular text-[#f3d4ff]">—</td>
+              <td className="px-3 py-4 tabular text-[#f3d4ff]">—</td>
+              <td className="px-3 py-4 text-[#f3d4ff]">—</td>
             </tr>
           ))}
         </tbody>
