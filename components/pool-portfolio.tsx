@@ -5,6 +5,7 @@ import { Mascot } from "@/components/mascot";
 import { TokenIcon } from "@/components/token-icon";
 import { formatCompactUsd, formatToken, formatUsd } from "@/lib/format";
 import { SAMPLE_POOLS } from "@/lib/pools";
+import { assetNetwork, networkLabel } from "@/lib/tokens";
 
 const AGGREGATOR_NOTE =
   "RomaSwap routes swaps through existing Base markets. It does not accept liquidity deposits, custody pool tokens, or deploy its own pools.";
@@ -126,7 +127,7 @@ export function PortfolioScreen() {
       <h1 className="mt-2 text-4xl font-medium tabular">{balancesReady ? formatUsd(total) : "—"}</h1>
       <p className="mt-1 text-sm text-[#f3d4ff]">
         {wallet.chainOk
-          ? "Balances are read from Base. Prices are samples. A receipt on this page does not move these balances."
+          ? "Base balances are read from Base. Bitcoin and XRP balances are not read here. A receipt does not move funds."
           : "Switch this wallet to Base (chain ID 8453) to read balances."}
       </p>
       {wallet.chainOk ? null : (
@@ -135,19 +136,22 @@ export function PortfolioScreen() {
         </button>
       )}
       <div className="mt-8 overflow-hidden rounded-3xl border border-white/10">
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const offBase = assetNetwork(row.token) !== "base";
+          return (
           <div key={row.token.id} className="flex items-center gap-3 border-b border-white/5 px-4 py-4 last:border-b-0">
             <TokenIcon token={row.token} size={36} />
             <div className="flex-1">
               <div className="font-medium">{row.token.symbol}</div>
-              <div className="text-sm text-[#f3d4ff]">{row.token.name}</div>
+              <div className="text-sm text-[#f3d4ff]">{offBase ? networkLabel(row.token) : row.token.name}</div>
             </div>
             <div className="text-right">
-              <div className="tabular">{balancesReady ? formatToken(row.balance) : "—"}</div>
-              <div className="text-sm text-[#f3d4ff] tabular">{balancesReady ? formatUsd(row.value) : "—"}</div>
+              <div className="tabular">{offBase ? "—" : balancesReady ? formatToken(row.balance) : "—"}</div>
+              <div className="text-sm text-[#f3d4ff] tabular">{offBase ? "—" : balancesReady ? formatUsd(row.value) : "—"}</div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       <h2 className="mt-8 mb-3 text-lg">Activity</h2>
       {app.activity.length === 0 ? (

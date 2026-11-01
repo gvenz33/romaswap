@@ -60,7 +60,7 @@ describe("RomaSwap sample quote", () => {
   it("only exposes the draft allowlist", () => {
     assert.deepEqual(
       TOKENS.map((token) => token.symbol),
-      ["ETH", "WETH", "USDC", "cbBTC", "USDT", "EURC", "cbETH", "wstETH", "AERO", "SOL", "cbXRP", "cbDOGE", "cbADA", "cbLTC", "cbMEGA", "cbHYPE", "cbZEC"],
+      ["ETH", "BTC", "XRP", "WETH", "USDC", "cbBTC", "USDT", "EURC", "cbETH", "wstETH", "AERO", "SOL", "cbXRP", "cbDOGE", "cbADA", "cbLTC", "cbMEGA", "cbHYPE", "cbZEC"],
     );
     assert.equal(usdc.address, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
   });

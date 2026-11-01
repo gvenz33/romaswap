@@ -13,7 +13,21 @@ export type Token = {
   accent: string;
   note?: string;
   imported?: boolean;
+  network?: AssetNetwork;
 };
+
+export type AssetNetwork = "base" | "bitcoin" | "xrpl";
+
+export function assetNetwork(token: Pick<Token, "network">): AssetNetwork {
+  return token.network ?? "base";
+}
+
+export function networkLabel(token: Pick<Token, "network">): string {
+  const network = assetNetwork(token);
+  if (network === "bitcoin") return "Bitcoin";
+  if (network === "xrpl") return "XRP Ledger";
+  return "Base";
+}
 
 /**
  * Reviewed Base allowlist. Contract reads on Base confirmed the symbol,
@@ -36,6 +50,38 @@ export const TOKENS: Token[] = [
     demoBalance: 1.842,
     accent: "#8ea2ff",
     note: "Native Ether on Base.",
+  },
+  {
+    id: "btc",
+    symbol: "BTC",
+    name: "Bitcoin",
+    address: null,
+    decimals: 8,
+    priceUsd: 0,
+    change1h: 0,
+    change1d: 0,
+    fdvUsd: 0,
+    volume1dUsd: 0,
+    demoBalance: 0,
+    accent: "#f7931a",
+    network: "bitcoin",
+    note: "Native Bitcoin on the Bitcoin network. This is not cbBTC on Base.",
+  },
+  {
+    id: "xrp",
+    symbol: "XRP",
+    name: "XRP",
+    address: null,
+    decimals: 6,
+    priceUsd: 0,
+    change1h: 0,
+    change1d: 0,
+    fdvUsd: 0,
+    volume1dUsd: 0,
+    demoBalance: 0,
+    accent: "#00aae4",
+    network: "xrpl",
+    note: "Native XRP on the XRP Ledger. This is not cbXRP on Base.",
   },
   {
     id: "weth",

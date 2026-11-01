@@ -15,6 +15,8 @@ export type ChartFrame = keyof typeof CHART_FRAMES;
 
 export function coinKeyFor(token: Pick<Token, "id" | "address">): string | null {
   if (token.id === "eth") return "coingecko:ethereum";
+  if (token.id === "btc") return "coingecko:bitcoin";
+  if (token.id === "xrp") return "coingecko:ripple";
   if (!token.address) return null;
   return `base:${token.address.toLowerCase()}`;
 }

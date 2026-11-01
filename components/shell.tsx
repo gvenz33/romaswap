@@ -7,6 +7,7 @@ import { useApp } from "@/components/app-state";
 import { Mascot } from "@/components/mascot";
 import { TokenIcon } from "@/components/token-icon";
 import { formatToken, shortAddress } from "@/lib/format";
+import { assetNetwork, networkLabel, type Token } from "@/lib/tokens";
 import { isAddress } from "viem";
 
 const TRADE = [
@@ -146,13 +147,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <div className="flex items-center justify-center gap-2 border-b border-[#ffe14a] bg-gradient-to-r from-[#ffe14a] via-[#ff8a3d] to-[#ff4d8d] px-3 py-1 text-center text-xs font-semibold text-[#3b1608] sm:gap-3 sm:text-sm">
         <Mascot pose="wave" alt="" className="h-11 w-11 object-contain" />
-        <span>Ave! Your wallet · Base only · live prices · no live trade</span>
+        <span>Ave! Base, Bitcoin, and XRP Ledger · live prices · no live trade</span>
         <Mascot pose="thumbs" alt="" className="hidden h-11 w-11 object-contain sm:block" />
       </div>
 
       {app.wallet && !app.wallet.chainOk ? (
         <div className="flex flex-wrap items-center justify-center gap-3 bg-[#3b1608] px-3 py-2 text-center text-sm text-[#ffe14a]">
-          <span>This wallet is not on Base. RomaSwap only uses chain ID 8453.</span>
+          <span>This wallet is not on Base. Base tokens use chain ID 8453. Bitcoin and XRP stay on their own networks.</span>
           <button
             className="rounded-full bg-[#ffe14a] px-3 py-1 text-xs font-semibold text-[#3b1608] disabled:opacity-60"
             disabled={app.switchingChain}
@@ -308,7 +309,7 @@ function SearchModal() {
               <TokenIcon token={token} />
               <span className="flex-1">
                 <span className="block font-medium">{token.name}</span>
-                <span className="text-sm text-[#f3d4ff]">{token.symbol} · Base</span>
+                <span className="text-sm text-[#f3d4ff]">{token.symbol} · {networkLabel(token)}</span>
               </span>
             </button>
           ))}
@@ -374,7 +375,7 @@ function TokenModal({ side }: { side: "sell" | "buy" }) {
           className="mb-3 w-full rounded-2xl bg-white/5 px-4 py-3 outline-none"
           aria-label="Search tokens"
         />
-        <p className="mb-2 text-xs text-[#f3d4ff]">Reviewed Base tokens are listed. Paste a contract address to import another. An import is not a review, and a swap is not sent.</p>
+        <p className="mb-2 text-xs text-[#f3d4ff]">Bitcoin and XRP are their own networks. The rest are on Base. Paste a Base contract to import another. An import is not a review, and a swap is not sent.</p>
         <div className="scroll-thin overflow-auto">
           {canImport ? (
             <button
@@ -397,9 +398,7 @@ function TokenModal({ side }: { side: "sell" | "buy" }) {
                 <TokenIcon token={token} size={32} />
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">{token.symbol}</span>
-                  <span className="block truncate text-sm text-[#f3d4ff]">
-                    {token.imported && token.address ? `${token.name} · ${shortAddress(token.address)}` : token.name}
-                  </span>
+                  <span className="block truncate text-sm text-[#f3d4ff]">{tokenSubtitle(token)}</span>
                 </span>
                 <span className="text-right text-sm tabular">
                   {balanceLabel(app, token.id)}
@@ -424,6 +423,9 @@ function ReviewModal() {
   const buy = app.buyToken;
   if (!quote || !buy) return null;
   const wrapped = app.sellToken.id === "cbbtc" || buy.id === "cbbtc";
+  const leavesBase = assetNetwork(app.sellToken) !== "base" || assetNetwork(buy) !== "base";
+  const payOn = networkLabel(app.sellToken);
+  const receiveOn = networkLabel(buy);
 
   return (
     <Overlay onClose={app.closeModal}>
@@ -440,11 +442,16 @@ function ReviewModal() {
           <Row label="You receive" value={`${formatToken(quote.buyAmount)} ${buy.symbol}`} />
           <Row label="Minimum received" value={`${formatToken(quote.minReceived)} ${buy.symbol}`} />
           <Row label="RomaSwap fee" value={`${formatToken(quote.feeAmount)} ${quote.feeToken.symbol} (0.25%)`} />
-          <Row label="Network" value="Base · 8453" />
+          <Row label="Network" value={payOn === receiveOn ? (leavesBase ? payOn : "Base · 8453") : `${payOn} → ${receiveOn}`} />
           <Row label="Max slippage" value={`${(app.slippageBps / 100).toFixed(2)}%`} />
           <Row label="Sample price impact" value={`${quote.priceImpactPct.toFixed(2)}%`} />
-          <Row label="Sample network fee" value="~$0.03" />
+          {leavesBase ? null : <Row label="Sample network fee" value="~$0.03" />}
         </div>
+        {leavesBase ? (
+          <p className="mt-3 text-sm leading-6 text-[#ffe3a3]">
+            This is a live USD conversion across networks. Nothing is bridged. A Base wallet cannot send Bitcoin or XRP Ledger transactions.
+          </p>
+        ) : null}
         {wrapped ? (
           <p className="mt-3 text-sm leading-6 text-[#ffe3a3]">cbBTC is Coinbase Wrapped BTC on Base. It is not native Bitcoin, and RomaSwap does not promise redemption.</p>
         ) : null}
@@ -468,7 +475,12 @@ function ReceiptModal() {
         <Mascot pose="cheer" alt="The centurion celebrating a sample quote" className="mx-auto h-40 w-40 object-contain" />
         <p className="text-sm font-semibold text-[#ffe14a]">Sample receipt</p>
         <h2 className="mt-2 text-2xl font-semibold">Swap recorded</h2>
-        <p className="mt-2 text-sm leading-6 text-[#f3d4ff]">No transaction was broadcast and no wallet signature was requested.</p>
+        <p className="mt-2 text-sm leading-6 text-[#f3d4ff]">
+          No transaction was broadcast and no wallet signature was requested.
+          {app.sellToken && app.buyToken && (assetNetwork(app.sellToken) !== "base" || assetNetwork(app.buyToken) !== "base")
+            ? " Bitcoin and XRP were not moved."
+            : ""}
+        </p>
         {latest ? (
           <p className="mt-4 rounded-2xl bg-white/5 px-4 py-3 text-sm">
             {latest.sellAmount} for {latest.buyAmount}
@@ -528,6 +540,12 @@ function Caret() {
       <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
+}
+
+function tokenSubtitle(token: Token) {
+  if (token.imported && token.address) return `${token.name} · ${shortAddress(token.address)}`;
+  if (assetNetwork(token) === "base") return token.name;
+  return `${token.name} · ${networkLabel(token)}`;
 }
 
 function SearchIcon() {

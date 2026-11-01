@@ -4,14 +4,14 @@ import { useMemo } from "react";
 import { erc20Abi, formatUnits, getAddress, type Address } from "viem";
 import { useBalance, useReadContracts } from "wagmi";
 import { BASE_CHAIN_ID } from "@/lib/config";
-import type { Token } from "@/lib/tokens";
+import { assetNetwork, type Token } from "@/lib/tokens";
 
 export function useBaseBalances(address: Address | undefined, enabled: boolean, tracked: readonly Token[]) {
   const roster = tracked.map((token) => `${token.id}:${token.address ?? ""}:${token.decimals}`).join("|");
   const erc20Tokens = useMemo(
     () =>
       tracked.flatMap((token) => {
-        if (!token.address) return [];
+        if (!token.address || assetNetwork(token) !== "base") return [];
         return [{ id: token.id, decimals: token.decimals, address: getAddress(token.address) }];
       }),
     [roster, tracked],
@@ -38,7 +38,9 @@ export function useBaseBalances(address: Address | undefined, enabled: boolean, 
 
   const balances = useMemo(() => {
     const next: Record<string, number> = {};
-    for (const token of tracked) next[token.id] = 0;
+    for (const token of tracked) {
+      if (assetNetwork(token) === "base") next[token.id] = 0;
+    }
     if (!enabled) return next;
     if (native.data) next.eth = Number(formatUnits(native.data.value, native.data.decimals));
     erc20Tokens.forEach((token, index) => {

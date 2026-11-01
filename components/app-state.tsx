@@ -9,7 +9,7 @@ import { formatToken } from "@/lib/format";
 import { cleanLabel, readImportedTokens, tokenFromImport, writeImportedTokens } from "@/lib/imported-tokens";
 import { type LivePrice } from "@/lib/market";
 import { buildQuote, type Quote } from "@/lib/quote";
-import { TOKENS, type Token } from "@/lib/tokens";
+import { assetNetwork, TOKENS, type Token } from "@/lib/tokens";
 import { walletChoices, type WalletChoice } from "@/lib/wallet-choices";
 import { friendlyWalletError } from "@/lib/wallet-error";
 import { walletConnectReady } from "@/lib/wagmi";
@@ -298,13 +298,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setNotice({ title: "Wrong network", body: message });
       return message;
     }
-    if (chainBalances.loading || chainBalances.failed) {
+    const sellingOnBase = assetNetwork(sellToken) === "base";
+    if (sellingOnBase && (chainBalances.loading || chainBalances.failed)) {
       const message = "Base balances are not ready. Wait for the read to finish before the sample receipt.";
       setNotice({ title: "Balance not ready", body: message });
       return message;
     }
     const balance = chainBalances.balances[sellToken.id] ?? 0;
-    if (quote.sellAmount > balance + 1e-8) {
+    if (sellingOnBase && quote.sellAmount > balance + 1e-8) {
       const message = `The Base balance does not cover ${sellToken.symbol}.`;
       setNotice({ title: "Insufficient balance", body: message });
       return message;

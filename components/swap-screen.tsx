@@ -6,6 +6,7 @@ import { useApp, type Timeframe } from "@/components/app-state";
 import { Mascot } from "@/components/mascot";
 import { TokenIcon } from "@/components/token-icon";
 import { formatToken, formatUsd, sanitizeAmount } from "@/lib/format";
+import { assetNetwork, networkLabel } from "@/lib/tokens";
 
 const TABS = [
   { href: "/swap", label: "Swap" },
@@ -41,8 +42,9 @@ export function SwapScreen() {
   const [customSlippage, setCustomSlippage] = useState("");
   const buy = app.buyToken;
   const amount = app.sellAmountNumber;
+  const sellingOnBase = assetNetwork(app.sellToken) === "base";
   const balance = app.balances[app.sellToken.id] ?? 0;
-  const balanceReady = Boolean(app.wallet?.chainOk) && !app.balancesLoading && !app.balancesError;
+  const balanceReady = sellingOnBase && Boolean(app.wallet?.chainOk) && !app.balancesLoading && !app.balancesError;
   const overBalance = balanceReady && amount > balance + 1e-8;
   const quote = app.quote;
 
@@ -209,12 +211,20 @@ export function SwapScreen() {
           <Detail label="Rate" value={`1 ${app.sellToken.symbol} = ${formatToken(quote.rate)} ${buy.symbol}`} />
           <Detail label="Fee · 0.25%" value={`${formatToken(quote.feeAmount)} ${quote.feeToken.symbol}`} />
           <Detail label="Minimum received" value={`${formatToken(quote.minReceived)} ${buy.symbol}`} />
-          <Detail label="Network" value="Base" />
+          <Detail
+            label="Network"
+            value={
+              networkLabel(app.sellToken) === networkLabel(buy)
+                ? networkLabel(app.sellToken)
+                : `${networkLabel(app.sellToken)} → ${networkLabel(buy)}`
+            }
+          />
           <p className="pt-1 text-xs leading-5 text-[#f3d4ff]">
-            {quote.feeToken.id === "usdc"
-              ? "Sample fee is taken in native Base USDC because USDC is in the pair."
-              : `Sample fee stays in ${quote.feeToken.symbol} because USDC is not in the pair.`}
-            {" "}This is not a firm 0x quote.
+            {!sellingOnBase || assetNetwork(buy) !== "base"
+              ? "Live USD conversion only. Nothing is bridged, and this wallet cannot send Bitcoin or XRP Ledger transactions."
+              : quote.feeToken.id === "usdc"
+                ? "Sample fee is taken in native Base USDC because USDC is in the pair. This is not a firm 0x quote."
+                : `Sample fee stays in ${quote.feeToken.symbol} because USDC is not in the pair. This is not a firm 0x quote.`}
           </p>
         </div>
       ) : null}
