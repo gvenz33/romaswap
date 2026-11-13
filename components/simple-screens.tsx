@@ -31,7 +31,7 @@ export function FiatScreen({ side }: { side: "buy" | "sell" }) {
         <Mascot pose="thumbs" alt="The centurion giving a thumbs up" className="mx-auto h-36 w-36 object-contain" />
         <h1 className="text-xl font-medium">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-[#f3d4ff]">
-          RomaSwap does not offer fiat purchases or sales. Token swaps stay on Base, between allowlisted assets, and you keep your own wallet.
+          Cash out from a wallet to a bank is not available. Buy shows a bank-to-wallet quote, and that quote does not debit a bank.
         </p>
         <Link href="/swap" className="mt-4 inline-flex rounded-full bg-[#ffe14a] px-4 py-2 text-sm font-semibold text-[#1a1408]">
           Go to Swap

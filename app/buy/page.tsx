@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { FiatScreen } from "@/components/simple-screens";
+import { BankBuyScreen } from "@/components/bank-buy";
 
 export const metadata: Metadata = { title: "Buy" };
 
 export default function BuyPage() {
-  return <FiatScreen side="buy" />;
+  return <BankBuyScreen />;
 }

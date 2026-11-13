@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/quote.test.ts"
+    "test": "tsx --test lib/quote.test.ts lib/bank.test.ts"
   },
   "dependencies": {
     "@coinbase/wallet-sdk": "^4.4.0",
