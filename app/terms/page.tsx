@@ -20,7 +20,7 @@ export default function TermsPage() {
         cbBTC means Coinbase Wrapped BTC on Base. It is not native Bitcoin. RomaSwap does not promise redemption, profit, or that a swap will execute.
       </p>
       <p className="mt-3">
-        The Buy page can show what dollars from a bank would convert to in a wallet you control. That preview does not debit a bank account and does not send crypto. Nothing here is an offer to buy or sell securities, a solicitation, or investment, legal, or tax advice. Live trading stays off until counsel, security review, and the owner’s written approval.
+        The Buy page can show what dollars from a bank, Cash App, Zelle, Venmo, Wise, or Revolut would convert to in a wallet you control. That preview does not debit the account and does not send crypto. Nothing here is an offer to buy or sell securities, a solicitation, or investment, legal, or tax advice. Live trading stays off until counsel, security review, and the owner’s written approval.
       </p>
       <p className="mt-6">
         <Link className="text-[#ffe14a]" href="/swap">Back to Swap</Link>

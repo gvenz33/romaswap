@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { useApp } from "@/components/app-state";
 import { TradeTabs } from "@/components/swap-screen";
 import { TokenIcon } from "@/components/token-icon";
-import { bankBuyQuote } from "@/lib/bank";
+import { bankBuyQuote, FIAT_PLATFORMS, fiatPlatform, type FiatPlatformId } from "@/lib/bank";
 import { formatToken, formatUsd, sanitizeAmount, shortAddress } from "@/lib/format";
 import { assetNetwork, networkLabel } from "@/lib/tokens";
 
 export function BankBuyScreen() {
   const app = useApp();
   const [usdText, setUsdText] = useState("");
+  const [platformId, setPlatformId] = useState<FiatPlatformId>("bank");
   const [saved, setSaved] = useState(false);
+  const platform = fiatPlatform(platformId);
   const receive = app.buyToken;
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function BankBuyScreen() {
     disabled = true;
     onAction = () => undefined;
   } else if (walletReady && quote && receive) {
-    action = saved ? "Preview saved" : "Review bank purchase";
+    action = saved ? "Preview saved" : `Review ${platform.label} purchase`;
     disabled = saved;
     onAction = () => setSaved(true);
   }
@@ -54,12 +56,27 @@ export function BankBuyScreen() {
     <div className="mx-auto w-full max-w-[480px] px-3 pt-8 pb-16">
       <TradeTabs current="/buy" />
       <div className="rounded-[22px] border border-[#ffe14a]/45 bg-[#6d28d9] p-4">
-        <p className="text-sm font-medium">From your bank</p>
+        <p className="text-sm font-medium">Pay with {platform.label}</p>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Fiat platform">
+          {FIAT_PLATFORMS.map((choice) => (
+            <button
+              key={choice.id}
+              aria-pressed={choice.id === platform.id}
+              className={`rounded-full px-3 py-1.5 text-sm ${choice.id === platform.id ? "bg-[#ffe14a] font-semibold text-[#3b1608]" : "bg-white/10 text-white"}`}
+              onClick={() => {
+                setSaved(false);
+                setPlatformId(choice.id);
+              }}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
         <label className="mt-3 block rounded-2xl bg-white/5 px-4 py-3">
           <span className="text-xs text-[#f3d4ff]">You send</span>
           <span className="mt-1 flex items-center gap-3">
             <input
-              aria-label="Dollars from your bank"
+              aria-label={`Dollars from ${platform.label}`}
               inputMode="decimal"
               placeholder="0"
               value={usdText}
@@ -69,7 +86,7 @@ export function BankBuyScreen() {
                 setUsdText(sanitizeAmount(event.target.value, 2));
               }}
             />
-            <span className="shrink-0 rounded-full bg-[#ffe14a] px-3 py-1 text-sm font-semibold text-[#3b1608]">Bank · USD</span>
+            <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-sm font-semibold">USD</span>
           </span>
         </label>
         <div className="mt-2 rounded-2xl bg-white/5 px-4 py-3">
@@ -92,12 +109,12 @@ export function BankBuyScreen() {
 
         {quote && receive ? (
           <div className="mt-3 rounded-2xl border border-[#ffe14a]/45 px-4 py-3 text-sm">
-            <p className="flex justify-between gap-3"><span>Bank payment</span><span>{formatUsd(usd)}</span></p>
+            <p className="flex justify-between gap-3"><span>{platform.label}</span><span>{formatUsd(usd)}</span></p>
             <p className="mt-1 flex justify-between gap-3"><span>Fee · 0.25%</span><span>{formatUsd(quote.feeUsd)}</span></p>
             <p className="mt-1 flex justify-between gap-3"><span>You receive</span><span>{formatToken(quote.receive)} {receive.symbol}</span></p>
             <p className="pt-2 text-xs leading-5 text-[#f3d4ff]">
               {onBase
-                ? "Live USD conversion into the wallet you connect. Your bank is not charged, and no crypto is sent."
+                ? `Live USD conversion into the wallet you connect. ${platform.label} is not charged, and no crypto is sent.`
                 : `${receive.symbol} lives on ${networkLabel(receive)}. This Base wallet cannot receive it. Choose a Base token such as USDC or cbBTC.`}
             </p>
           </div>
@@ -113,15 +130,15 @@ export function BankBuyScreen() {
 
         <ol className="mt-4 grid gap-2 text-sm">
           <li className="flex justify-between gap-3 text-[#f3d4ff]"><span>1. Connect your wallet</span><span>{app.wallet ? shortAddress(app.wallet.address) : "Destination"}</span></li>
-          <li className="flex justify-between gap-3 text-[#f3d4ff]"><span>2. Pay from your bank</span><span>Not charged</span></li>
+          <li className="flex justify-between gap-3 text-[#f3d4ff]"><span>2. {platform.step}</span><span>Not charged</span></li>
           <li className="flex justify-between gap-3 text-[#f3d4ff]"><span>3. Receive {receive?.symbol ?? "crypto"}</span><span>{receive ? networkLabel(receive) : "Wallet"}</span></li>
         </ol>
         <p className="mt-3 text-xs leading-5 text-[#f3d4ff]">
-          RomaSwap does not ask for a bank login, account number, or routing number.
+          {platform.privacy}
         </p>
         {saved && quote && receive ? (
           <p className="mt-3 rounded-2xl bg-[#3b1608] px-4 py-3 text-sm text-[#ffe14a]" role="status">
-            Preview saved in this browser. {formatUsd(usd)} was not taken from a bank, and {formatToken(quote.receive)} {receive.symbol} was not sent.
+            Preview saved in this browser. {formatUsd(usd)} was not taken from {platform.label}, and {formatToken(quote.receive)} {receive.symbol} was not sent.
           </p>
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bankBuyQuote } from "./bank";
+import { bankBuyQuote, FIAT_PLATFORMS } from "./bank";
 
 describe("bank buy quote", () => {
   it("converts dollars after the 25 bps fee", () => {
@@ -9,6 +9,13 @@ describe("bank buy quote", () => {
     assert.equal(quote.feeUsd, 0.25);
     assert.equal(quote.netUsd, 99.75);
     assert.equal(quote.receive, 99.75);
+  });
+
+  it("lists the fiat platforms ProveX shows", () => {
+    assert.deepEqual(
+      FIAT_PLATFORMS.map((platform) => platform.label),
+      ["Bank", "Cash App", "Zelle", "Venmo", "Wise", "Revolut"],
+    );
   });
 
   it("rejects an empty amount or a missing price", () => {
